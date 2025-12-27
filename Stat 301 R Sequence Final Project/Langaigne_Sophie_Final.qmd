@@ -1,0 +1,626 @@
+---
+title: "Shopping Dataset for Marketing Purposes"
+subtitle: |
+  | Shopping Dataset for Marketing 
+  | Data Science 1 with R (STAT 301-1)
+author: "Sophie Langaigne"
+pagetitle: "Shopping Dataset for Marketing Purposes by Sophie Langaigne"
+date: "2025-12-10"
+
+format:
+  html:
+    toc: true
+    toc-depth: 4
+    toc-location: left
+    embed-resources: true
+    link-external-newwindow: true
+    code-fold: true
+    echo: false
+
+execute:
+  warning: false
+from: markdown+emoji
+reference-location: margin
+citation-location: margin
+---
+
+::: {.callout-tip icon=false}
+## Github Repo Link
+[Final Project Link](https://github.com/stat301-1-2025-fall/final-project-1-sophielangaigne2027-hash.git)
+:::
+```{r}
+#| label: data-loading
+#Load packages 
+library(tidyverse)
+library(dplyr)
+library(readr)
+library(naniar)
+library(knitr)
+
+#Read CSV file
+shopping_dataset <- read.csv("data/raw/shopping_behavior_updated.csv")
+
+dir.create("plots", showWarnings = FALSE)
+```
+
+
+# Introduction
+
+#### Purpose
+
+I have chosen the Shopping Behavior Dataset from Kaggle because it offers a multifaceted view of individual consumer transactions, demographics, product details, frequency and promos. This dataset is perfect for marketing analytics which is something I'm very passionate about exploring. Understanding how certain factors can affect consumer behaviour. In addition, I'm currently working on a different dataset for my marketing classes and I wanted to combine my interests.
+
+#### Rationale for Dataset Selection
+I have chosen the Shopping Behavior Dataset from Kaggle because it offers a multifaceted view of individual consumer transactions, demographics, product details, frequency, and promotions. This dataset is ideal for marketing analytics, which is an area I am passionate about exploring since I am also in the Integrated Marketing Certificate Program. Understanding how certain factors affect consumer behavior is valuable for both academic and practical applications. Additionally, I am currently working on a different dataset for my marketing classes, and I wanted to integrate my interests across both projects.
+
+#### Data Quality and Complexity Assessment
+Dataset Dimensions: 3,900 observations and 18 variables
+
+Categorical Variables (11): Customer ID, Payment Method, Promo Code Used,
+Discount Applied, Shipping Type, Subscription Status, Season, Color, Size,
+Location, and Category
+
+Numeric Variables (4): Age, Previous Purchases, Purchase Amount (USD), and
+Review Rating
+
+
+#### Data Completeness Chart
+```{r}
+#| label: fig-completeness
+shopping_dataset_clean <- shopping_dataset %>%
+  mutate(
+    across(where(is.numeric), ~ ifelse(is.na(.x), median(.x, na.rm = TRUE), .x)),
+    across(where(is.character), ~ ifelse(is.na(.x), "Unknown", .x))
+  )
+
+missing_summary <- data.frame(
+  Status = c("Complete", "Missing"),
+  Count = c(sum(complete.cases(shopping_dataset)), 
+            sum(!complete.cases(shopping_dataset)))
+)
+
+p1 <- ggplot(missing_summary, aes(x = Status, y = Count, fill = Status)) +
+  geom_col() +
+  scale_fill_manual(values = c("Complete" = "steelblue", "Missing" = "coral")) +
+  labs(
+    title = "Data Completeness Chart",
+    x = NULL,
+    y = "Number of Rows"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+p1
+ggsave("plots/data.completeness.chart.png", p1, width = 6, height = 4, dpi = 300)
+
+```
+#### Potential Missingness
+Some categorical nulls like Promo Code Used and Discount Applied may represent implicit “No”/"NA" values rather than true missing data. However based on my missingness test, this dataset does not require a lot of tidying because there is no missingness. In addition, high dollar amounts could not register in the dataset since there might be data entry limits with the website, there could be skewness in the data but within my EDA I will explore this further. Upon further research in @fig-completeness, this graph shows that this dataset is considered complete with no missing values. 
+
+
+#### Data Quality Notes 
+This dataset is considered substantially complete despite
+the presence of "No" values in the promo code variable. These missing values
+can be appropriately handled through standard data cleaning techniques. The
+variables demonstrate sufficient complexity and diversity for robust data
+analysis. The dataset contains numerous unique values across categorical
+variables, and some variables may require string manipulation or reference
+during analysis. Overall, the dataset is well-suited for exploring
+relationships between consumer demographics, purchasing behavior, and product
+preferences, making it an excellent choice for applied marketing analytics.
+
+
+
+# EDA 
+
+### Univariate Analysis on Purchase Amount
+```{r}
+#| label: fig-dis-purchases
+
+p2 <- ggplot(shopping_dataset_clean, aes(x = Purchase.Amount..USD.)) +
+  geom_histogram(bins = 30, fill = "red", alpha = 0.7) +
+  theme_minimal() +
+  labs(
+    title = "Distribution of Purchase Amount",
+    x = "Purchase Amount (USD)",
+    y = "Count"
+  )
+  
+p2
+
+
+ggsave("plots/distribution.purchase.amount.png", p2, width = 6, height = 4, dpi = 300)
+
+```
+#### Insights on the Distribution by Purchases 
+@fig-dis-purchases displays the distribution of purchase amounts is fairly uniform, with customers making purchases across the full price range rather than clustering around specific dollar amounts. This suggests the store sells a balanced mix of products at different price points, with no strong tendency toward either low-cost or high-cost purchases that may skew data. 
+
+### BoxPlot of Purchase Amount
+```{r}
+#| label: fig-boxplot-purchases
+
+p3 <- ggplot(shopping_dataset_clean, aes(y = Purchase.Amount..USD.)) +
+  geom_boxplot(fill = "red") +
+  theme_minimal() +
+  labs(
+    title = "Boxplot of Purchase Amount",
+    y = "Purchase Amount (USD)"
+  )
+
+p3
+ggsave("plots/boxplot.purchase.amount.png", p3, width = 6, height = 4, dpi = 300)
+```
+#### Insight on the Distribution by Purchases (Boxplot)
+In @fig-boxplot-purchases, data shows that the majority of purchases range from 10 to 100 dollars, 50% of those purchases ranging from 40 to 80 dollars. 
+
+
+### Univariate Variate Analysis on Frequency of Items Bought
+```{r}
+#| label: fig-uni-frequency-items
+
+p4 <- shopping_dataset_clean %>%
+  count(Item.Purchased) %>%
+  ggplot(aes(x = reorder(Item.Purchased, n), y = n)) +
+  geom_col(fill = "steelblue", alpha = 0.8) +
+  coord_flip() +
+  theme_minimal() +
+  labs(
+    title = "Frequency of Items Purchased",
+    x = "Item Purchased",
+    y = "Count"
+  )
+p4
+ggsave("plots/frequency.items.purchased.png", p4, width = 6, height = 4, dpi = 300)
+```
+#### Insights on the Distribution of Frequency of Items Purchased
+Looking at the clothing purchase frequency graph, @fig-uni-frequency-items displays several ideas that stood out to me. Pants, jewelry, and blouses were the most items purchases with around 180-185 each, suggesting these are popular items. The data shows three distinct tiers of popularity, with the top tier items (Pants through Sweater) seeing 170-185 purchases, a middle tier (Jacket through Scarf) ranging from 150-165 purchases, and a lower tier (Hat through Jeans) falling between 125-145 purchases. Accessories were very popular overall with jewelry ranking second and sunglasses, belts, and sandals appearing in the upper-middle range. Footwear categories are distributed throughout the chart suggesting seasonal influences. Jeans ranked last despite being a wardrobe staple, which could reflect market saturation or higher price points that limit repeat purchases. There were no significant outliers that could be important to note.
+
+
+### Age Univariate Analysis on the Distribution of Customer Age
+```{r}
+#| label: fig-uni-distribution-age
+p5 <- ggplot(shopping_dataset_clean, aes(x = Age)) +
+  geom_histogram(bins = 20, fill = "steelblue", alpha = 0.8) +
+  theme_minimal() +
+  labs(
+    title = "Distribution of Customer Age",
+    x = "Age",
+    y = "Count"
+  )
+
+p5
+ggsave("plots/distribution.customer.age.png", p5, width = 6, height = 4, dpi = 300)
+```
+#### Insights on the Distribution of Customer Age
+@fig-uni-distribution-age reveals that customers from age 18 to 73 are shopping consistently and most age groups have about 200 customers. Some dipping lower and some rising higher. The main age ranges are late 20s to mid 30s and mid to late 50s.  Overall, the relatively flat distribution across such a wide age range suggests that shopping is consistent and has a wide range of appeal. Further research would help identify precise marketing, pricing, and product recommendations.
+
+### Analysis on Color and Size
+```{r}
+#| label: fig-color-size
+shopping_dataset_clean %>%
+  count(Color, Size) %>%
+  ggplot(aes(x = factor(Size, levels = c("S", "M", "L", "XL")), y = n, fill = Color)) +
+  geom_col(position = "dodge") +
+  labs(
+    title = "Purchases by Item Color and Size",
+    x = "Size",
+    y = "Number of Purchases",
+    fill = "Color"
+  ) +
+  theme_minimal()
+```
+#### Insights on Purchase Numbers by Color and Size
+
+@fig-color-size explores the relationship between color and size in terms of products sold. Medium size has the majority of purchases per color (60-90), Large, Small and XL underperform and follow in that order with Large being moderately above Small and XL that are seemingly low in number. There is an even distribution across the items colors however in order to increase sales focusing on the highest selling colors could increase revenue. From there, there is insight that colors like Teal, Violet and Olive are the highest selling colors for the highest selling size. Meaning producing more in these colors may be beneficial. In addition, the size disparity between Medium and sizes like Small and XL could be an opportunity for growth that should be tested.
+
+### Bivariate Analysis On Clothes & Seasons
+```{r}
+#| output: false
+
+#View the items that are present in the dataset
+unique(shopping_dataset_clean$Item.Purchased)
+
+seasonal_items <- tribble(
+  ~Item.Purchased, ~season,
+  
+  # spring items
+  "Blouse", "spring",
+  "Dress", "spring",
+  "Skirt", "spring",
+  "Sneakers", "spring",
+  "Jacket", "spring",
+  "Shirt", "spring",
+  "Jeans", "spring",
+  "Pants", "spring",
+  "T-shirt", "spring",
+  
+  # summer items
+  "Sandals", "summer",
+  "Shorts", "summer",
+  "Sunglasses", "summer",
+  "Dress", "summer",
+  "Skirt", "summer",
+  "T-shirt", "summer",
+  "Hat", "summer",
+  "Sneakers", "summer",
+  
+  # fall items
+  "Sweater", "fall",
+  "Jacket", "fall",
+  "Hoodie", "fall",
+  "Jeans", "fall",
+  "Pants", "fall",
+  "Boots", "fall",
+  "Scarf", "fall",
+  "Blouse", "fall",
+  "Shirt", "fall",
+  
+  # winter items
+  "Coat", "winter",
+  "Sweater", "winter",
+  "Boots", "winter",
+  "Gloves", "winter",
+  "Scarf", "winter",
+  "Hat", "winter",
+  "Hoodie", "winter",
+  "Jeans", "winter",
+  "Pants", "winter",
+  "Socks", "winter",
+  
+  # ALL SEASONS (accessories & basics)
+  "Handbag", "all seasons",
+  "Shoes", "all seasons",
+  "Jewelry", "all seasons",
+  "Backpack", "all seasons",
+  "Belt", "all seasons"
+)
+
+item_by_season <- shopping_dataset_clean %>%
+  count(Season, Item.Purchased) %>%
+  arrange(Season)
+```
+
+```{r}
+#| label: fig-items-seasons
+
+p6 <- ggplot(item_by_season, aes(x = Item.Purchased, y = n, fill = Season)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ Season) +
+  theme_minimal() +
+  labs(
+    title = "Item Purchases by Season",
+    x = "Item Purchased",
+    y = "Count"
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+p6
+
+ggsave("plots/item.purchases.by.season.png", p6, width = 6, height = 4, dpi = 300)
+```
+#### Insights on Item Purchases by Season
+
+@fig-items-seasons shows how people shop depending on the season. In the fall, everyone starts buying more boots, jackets, and sweaters as it gets colder. By spring, you can tell people are shifting into warmer weather because things like T-shirts, sneakers, and sunglasses start getting bought more. Summer has a mix of items but winter focuses on the heavy cold-weather clothes like coats and hoodies. Overall, it just shows that people shop based on the weather, cold months prompt the purchase of warmer clothes, warm months prompt the purchase of summer outfits, and accessories stay pretty consistent year-round.
+
+
+### Discount Usage by Payment Method
+```{r}
+#| label: fig-discount-payment
+
+p7 <- shopping_dataset_clean %>%
+ggplot(aes(x = Payment.Method, 
+           fill = factor(Discount.Applied, levels = c("Yes", "No")))) + 
+  geom_bar(position = "fill") +
+  scale_fill_manual(values = c("Yes" = "green",  
+                               "No"  = "red")) +
+  labs(
+    title = "Discount Usage by Payment Method",
+    x = "Payment Method",
+    y = "Proportion of Transactions",
+    fill = "Discount Applied?"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(size = 12, face = "bold", angle = 45, hjust = 1),
+    axis.title.x = element_text(size = 13, face = "bold"),
+    axis.title.y = element_text(size = 13),
+    legend.title = element_text(size = 12, face = "bold"),
+    legend.text = element_text(size = 11)
+  )
+p7
+ggsave("plots/discount.usage.payment.method.png", p7, width = 6, height = 4, dpi = 300)
+```
+
+### Proportion of Total Transactions by Payment Method
+```{r}
+#| label: fig-numtransactions-payment
+
+payment_table <- shopping_dataset_clean %>%
+  group_by(Payment.Method) %>%
+  summarise(
+    proportion = n() / nrow(shopping_dataset_clean)
+  ) %>%
+  arrange(desc(proportion))
+
+kable(payment_table,
+      digits = 3,
+      col.names = c("Payment Method", "Proportion of Transactions"),
+      caption = "Proportion of Total Transactions by Payment Method")
+
+```
+
+#### Insights on Discount Usage by Payment Method and the Proportion of Total Transactions by Payment Method
+
+@fig-discount-payment reveals remarkably consistent discount usage patterns across all payment methods, with approximately 60% of transactions not receiving discounts (red) and 40% receiving discounts (green) regardless of how customers pay. The uniformity across Bank Transfer, Cash, Credit Card, Debit Card, PayPal, and Venmo suggests that discount application is independent of payment method choice in this dataset. Debit Card are more price-sensitive, since they used a higher proportion of discounts (45%). Even though it is clear that it was a slight difference it stands out compared to the rest of the data. We also see that payment method promotions are unlikely to drive results. Discount usage is shown as slightly uniform across payment types and payment method doesnt seem to vary. In @fig-numtransactions-payment, we can see that the proportion of different payment usage doesnt necessarily vary. In addition, since 60% of customers purchase without discounts, there's room for growth by offering discounts based on purchase frequency since customers would purchase more tend to spend more.
+
+### Revenue Across Age Groups by Subscription Status
+```{r}
+#| label: fig-agegroups-subscription
+shopping_age_analysis <- shopping_dataset_clean %>%
+  mutate(
+    customer_segment = case_when(
+      Previous.Purchases <= 10 ~ "New Customer",
+      Previous.Purchases <= 30 ~ "Regular Customer",
+      TRUE ~ "Loyal Customer"
+    ),
+    Age_Group = case_when(
+    Age < 25 ~ "18-24",
+    Age < 35 ~ "25-34",
+    Age < 45 ~ "35-44",
+    Age < 55 ~ "45-54",
+    Age >= 55 ~ "55+"
+  ))
+
+age_summary <- shopping_age_analysis %>%
+  group_by(Age_Group) %>%
+  mutate(
+    avg_purchase = mean(Purchase.Amount..USD.),
+    avg_rating = mean(Review.Rating),
+    avg_previous_purchases = mean(Previous.Purchases),
+    total_revenue = sum(Purchase.Amount..USD.),
+    subscription_rate = mean(Subscription.Status == "Yes") * 100,
+    discount_usage = mean(Discount.Applied == "Yes") * 100,
+    customer_count = n()
+  ) 
+
+p8 <- ggplot(age_summary, aes(x = Age_Group, y = total_revenue, fill = Subscription.Status)) +
+  geom_bar(stat = "identity", position = "stack") +
+  labs(
+    title = "Revenue Across Age Groups by Subscription Status",
+    x = "Age Group",
+    y = "Total Revenue (USD)",
+    fill = "Subscription Status"
+  ) +
+   scale_y_continuous(labels = scales::label_dollar(scale = 1e-6, suffix = "M")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+p8
+ggsave("plots/revenue.across.age.groups.subscription.status.png", p8, width = 6, height = 4, dpi = 300)
+```
+#### Insights on Revenue Across Age Groups by Subscription Status
+
+@fig-agegroups-subscription illustrates total revenue distribution across five age groups, segmented by subscription status. Total revenue shows a dramatic upward trend with age. The middle three age groups cluster showing that even though young adults contribute moderately to revenue and 55+ demographic is spending the majority of the money. The 55+ age generates the highest total revenue ($82M) but most notably subscribers in this group contribute more revenue of any other age group. This means that the older population as a whole and older subscribers are more valuable customers. This suggests a change in spending behavior at age 55, possibly related to life circumstances..
+
+
+### US States by Number of Purchases
+```{r}
+#| label: fig-states-purchases
+state_purchases <- shopping_dataset_clean %>%
+  count(Location, name = "purchases") %>%
+  mutate(region = tolower(Location))
+
+us_states <- map_data("state")
+map_data <- left_join(us_states, state_purchases, by = "region")
+
+p9 <- ggplot(map_data, aes(x = long, y = lat, group = group, fill = purchases)) +
+  geom_polygon(color = "white", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", 
+                      name = "Number of\nPurchases") +
+  theme(
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    axis.ticks = element_blank(),
+    panel.grid = element_blank(),
+    legend.position = "right"
+  ) +
+  labs(title = "US States by Number of Purchases")
+p9
+ggsave("plots/us.states.by.number.purchase.png", p9, width = 6, height = 4, dpi = 300)
+```
+### Top 10 States by Total Purchases
+```{r}
+#| label: fig-top10states-purchases
+top_states <- state_purchases %>%
+  arrange(desc(purchases)) %>%
+  head(10) %>%
+  rename(
+    State = Location,
+    Total_Purchases = purchases,
+    Region = region
+  )
+
+kable(top_states,
+      caption = "Top 10 States by Total Purchases")
+
+```
+  
+#### Insights on US States by Number of Purchases and the Top States by Purchases
+
+According to @fig-states-purchases, there doesn't appear to be a strong geographic clustering pattern since high and low activity states are spread across the country. Montana, California and Idaho have the highest number of purchases in the dataset. Next, the medium purchase amount states are mainly located in the Northeast, some of the Midwest, the deep South and some part of the West. Looking at states in these areas might assist marketers into smaller ads to target parts of these populations. But having a stronger focus on the states with more purchases and purchasing power. There is also room for growth in the lower activity states like Kansas, New Mexico, Florida and Washington.  In addition, further research could be conducted through exploring purchases per capita. Oveerall, for now, by pinpointing product or brand issues in these states, marketers can increase sales in these areas. There is no noticeable clustering so focusing on states with higher purchases rather than regions might be the best way to increase sales. The top states with purchases are as listed as follows based on @fig-top10states-purchases, Montana, California, Idaho, Illinois, Alabama, Minnesota, Nebraska, Nevada, New York, and Delaware. 
+
+
+
+### Number of Purchases by Gender
+```{r}
+#| label: fig-num-purchase-gender
+purchase_counts <- shopping_dataset_clean %>%
+  count(Gender)
+
+p10 <- ggplot(purchase_counts, aes(x = Gender, y = n, fill = Gender)) +
+  geom_col() +
+  geom_text(aes(label = n), vjust = -0.5) +
+  labs(
+    title = "Number of Purchases by Gender",
+    x = "Gender",
+    y = "Number of Purchases"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+p10
+ggsave("plots/number.purchases.by.gender.png", p10, width = 6, height = 4, dpi = 300)
+```
+#### Insights on Purchases by Gender
+@fig-num-purchase-gender reveals a significant gender imbalance in the shopping dataset. Males made approximately 68% of all purchases (2,652) compared to females at 32% (1,248). Males made more than double the number of purchases. This means that data may not reflect equal shopping patterns between genders.
+
+### Gender Shopping Patterns by State
+```{r}
+#| label: fig-gender-state
+# Code items based on items that are perceived as more feminine or masculine
+female_items <- c("Blouse", "Dress", "Skirt", "Handbag", "Jewelry", "Heels")
+male_items <- c("Shirt", "Shorts", "Belt", "Tie", "Suit", "Hoodie")
+
+state_analysis <- shopping_dataset_clean %>%
+  group_by(Location) %>%
+  summarise(
+    total_male = sum(Gender == "Male"),
+    male_cross = sum(Gender == "Male" & Item.Purchased %in% female_items),
+    total_female = sum(Gender == "Female"),
+    female_cross = sum(Gender == "Female" & Item.Purchased %in% male_items),
+    prop_male = male_cross / total_male,
+    prop_female = female_cross / total_female,
+    difference = prop_male - prop_female,
+    total_purchases = n(),
+    
+# Chi Squared Test (Cited)
+    p_value = tryCatch({
+      tbl <- matrix(c(male_cross, total_male - male_cross,
+                      female_cross, total_female - female_cross),
+                    nrow = 2, byrow = TRUE)
+      chisq.test(tbl)$p.value
+    }, error = function(e) NA),
+    
+    significant = !is.na(p_value) & p_value < 0.1,
+    high_difference = significant & abs(difference) > 0.05
+  ) %>%
+  ungroup()
+
+us_states <- map_data("state")
+map_data_merged <- us_states %>%
+  left_join(state_analysis %>% mutate(region = tolower(Location)),
+            by = "region")
+
+p11 <- ggplot(map_data_merged, aes(long, lat, group = group)) +
+  geom_polygon(aes(fill = difference), color = "white", size = 0.2) +
+  geom_polygon(data = map_data_merged %>% 
+                filter(high_difference == TRUE),
+                fill = NA, 
+                color = "red", 
+                size = 1.5, 
+                linetype = "solid") +
+  scale_fill_gradient2(low = "red", mid = "white", high = "blue",
+                       midpoint = 0, labels = scales::percent,
+                       name = "Difference") +
+  labs(
+    title = "Gender Shopping by State",
+    subtitle = "Red outlines show states with high significant differences (p < 0.1 & |difference| > 5%)",
+    caption = "Blue = Men buy more female items | Red = Women buy more male items"
+  ) +
+  theme_minimal() +
+  theme(   
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank(),
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 11, hjust = 0.5)
+  )
+
+p11
+ggsave("plots/gender.shopping.by.state.png", p11, width = 6, height = 4, dpi = 300)
+```
+
+### States with the Largest Gender Differences in Purchases
+```{r}
+#| label: fig-table-gender-statedifferences
+
+high_diff_table <- state_analysis %>%
+  filter(high_difference == TRUE) %>%
+  select(Location, prop_male, prop_female, difference, p_value) %>%
+  arrange(desc(abs(difference)))
+
+kable(high_diff_table,
+      digits = 3,
+      col.names = c("State", "Proportion Male", "Proportion Female",
+                    "Difference", "p-value"),
+      caption = "States with the Largest Gender Differences in Purchases")
+```
+
+#### Insights on Gender Differences by State
+
+@fig-gender-state analyzes cross-gender shopping patterns across the United States, where blue indicates men buying more traditionally feminine items and red shows women buying more masculine items. Only four states show statistically significant differences. In Idaho, where women purchase significantly more masculine items, and in Minnesota, Mississippi, and Georgia where men purchase more feminine items. Ohio displays the strongest blue pattern, while Idaho shows the strongest red. Significant states suggests that cross-gender shopping behaviors are influenced more by state cultural factors and gender norms when it comes to purchasing remains consistent across the country. 
+
+### Customer Count by Purchase Frequency 
+```{r}
+#| label: fig-loyalty-frequency
+
+frequency_analysis <- shopping_dataset_clean %>%
+  mutate(
+    Frequency.of.Purchases = factor(Frequency.of.Purchases,
+                                   levels = c("Weekly", "Fortnightly", 
+                                            "Monthly", "Every 3 Months",
+                                            "Quarterly", "Annually"))
+  )
+
+
+frequency_summary <- frequency_analysis %>%
+  group_by(Frequency.of.Purchases) %>%
+  summarise(
+    customer_count = n(),
+    avg_rating = mean(Review.Rating),
+    .groups = "drop"
+  ) %>%
+  filter(!is.na(Frequency.of.Purchases))
+
+
+p12<- ggplot(frequency_summary, aes(x = Frequency.of.Purchases)) +
+  geom_col(aes(y = customer_count, fill = avg_rating), alpha = 0.8) +
+  geom_text(aes(y = customer_count, label = customer_count),
+            vjust = -0.5, size = 3.5, fontface = "bold") +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", 
+                      name = "Avg Rating") +
+  labs(
+    title = "Customer Count by Purchase Frequency",
+    subtitle = "Color intensity represents average review rating",
+    x = "Purchase Frequency",
+    y = "Number of Customers"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
+    plot.title = element_text(face = "bold", size = 14)
+  )
+
+p12
+
+ggsave("plots/purchase.frequency.customers.png", p12, width = 8, height = 5, dpi = 300)
+
+```
+#### Insights on Customer Count by Purchase Frequency
+
+@fig-loyalty-frequency shows that customers are pretty evenly spread across all shopping frequencies ranging from 539 to 584 people for each frequency. The color gradient reveals average review ratings between 3.73 and 3.77, with people who shop every 1-3 months showing slightly higher satisfaction than those on a quarterly schedule. Quarterly shoppers are the least satisfied even though there are a larger number of them suggesting that timing might be an issue. Based on the satisfaction scores, targeting customers who naturally shop every 3 months with subscription offers or special promotions could be a smart move since they're already the happiest with their experience.
+
+# Conclusions
+
+My analysis reveals three critical insights. Firstly, the 55+ age group generates the highest revenue, with subscription customers contributing more than non-subscribers. Second, Montana, California, and Idaho have the largest number of purchases and 68% of customers are male meaning that the female market is untapped. Third, customer satisfaction varies significantly by purchase frequency, with every-3-month shoppers rating highest (3.77) despite quarterly shoppers representing larger numbers but showing the lowest satisfaction. In addition, medium sizes were the most sold and XL and S were at the same level and maybe those sizes need more options. 
+
+# References
+
+OpenAI. (2025). ChatGPT (Version GPT-5.1) [Large language model]. https://chat.openai.com/
+
+# Citations
+Grandmaster07. (n.d.). Shopping Behaviour Dataset. Kaggle. Retrieved December 10, 2025, from https://www.kaggle.com/datasets/grandmaster07/shopping-behaviour-dataset/data
+
+OpenAI. (2025). ChatGPT (Version GPT-5.1) [Large language model]. https://chat.openai.com/
+
+R Core Team. (2024). R: A language and environment for statistical computing. R Foundation for Statistical Computing.
